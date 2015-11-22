@@ -16,9 +16,26 @@
 
 #include <zmq.hpp>
 #include "../abstractserverconnector.h"
+#include <jsonrpccpp/common/connectors/zmq.h>
 
 namespace jsonrpc
 {
+    class ZMQServerCurve : public ZMQEndpointOption {
+        public:
+            /**
+             * @brief ZMQServerCurve, constructor for the included ZMQServerCurve.
+             * @param endpoint, string containing zeromq endpoint.
+             * @param secretkey, ZMQCurveKey containing ZMQ_CURVE_SECRETKEY socket option.
+             * @see http://api.zeromq.org/4-0:zmq-curve 
+             */
+            ZMQClientCurve(const std::string& endpoint,
+                    const ZMQCurveKey& secretkey);
+            virtual ~ZMQClientCurve;
+
+            virtual void SocketOptions(zmq::socket_t& s);
+        private:
+            ZMQCurveKey secretkey;
+    };
     class ZMQListener;
     /**
      * This class provides ZeroMQ REP/REQ Socket Server,to handle incoming Requests.

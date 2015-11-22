@@ -14,11 +14,33 @@ using namespace zmq;
 
 #define REQUEST_TIMEOUT     2500    //  msecs, (> 1000!)
 
+ZMQClientCurve::ZMQClientCurve(const std::string& ep,
+                    const ZMQCurveKey& serkey,
+                    const ZMQCurveKey& pubkey,
+                    const ZMQCurveKey& seckey)
+    : ZMQEndpointOption(ep),
+    serverkey(serkey),
+    publickey(pubkey),
+    secretkey(seckey)
+{
+}
+void ZMQClientCurve::SocketOptions(zmq::socket_t& s)
+{
+
+    s.setsockopt(ZMQ_CURVE_SERVERKEY, serverkey.Key(), serverkey.Size());
+    s.setsockopt(ZMQ_CURVE_PUBLICKEY, publickey.Key(), publickey.Size());
+    s.setsockopt(ZMQ_CURVE_SECRETKEY, secretkey.Key(), secretkey.Size());
+
+}
 ZMQClient::ZMQClient(const std::string& endpoint)
+    : ZMQClient(ZMQClientNull(endpoint))
+{
+ZMQClient::ZMQClient(const ZMQEndpointOption& endpoint)
     : ctx(), sock(ctx, ZMQ_REQ)
 {
     try {
-        sock.connect(endpoint.c_str());
+        endpoint.SocketOptions(sock);
+        sock.connect(endpoint.Endpoint);
         const int linger = 0;
         sock.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
     } catch (const zmq::error_t& e) {
