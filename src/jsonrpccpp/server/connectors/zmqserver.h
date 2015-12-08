@@ -16,11 +16,11 @@
 
 #include <zmq.hpp>
 #include "../abstractserverconnector.h"
-#include <jsonrpccpp/common/connectors/zmq.h>
+#include <jsonrpccpp/common/connectors/zmqcommon.h>
 
 namespace jsonrpc
 {
-    class ZMQServerCurve : public ZMQEndpointOption {
+    class ZMQServerCurve : public ZMQEndpointOption, public ZMQEndpointOptionFabric<ZMQServerCurve> {
         public:
             /**
              * @brief ZMQServerCurve, constructor for the included ZMQServerCurve.
@@ -28,11 +28,12 @@ namespace jsonrpc
              * @param secretkey, ZMQCurveKey containing ZMQ_CURVE_SECRETKEY socket option.
              * @see http://api.zeromq.org/4-0:zmq-curve 
              */
-            ZMQClientCurve(const std::string& endpoint,
+            ZMQServerCurve(const std::string& endpoint,
                     const ZMQCurveKey& secretkey);
-            virtual ~ZMQClientCurve;
+            virtual ~ZMQServerCurve() {};
 
-            virtual void SocketOptions(zmq::socket_t& s);
+            virtual void SocketOptions(zmq::socket_t& s) override;
+
         private:
             ZMQCurveKey secretkey;
     };
@@ -55,7 +56,13 @@ namespace jsonrpc
              * @param endpoints, a vector of strings containing the ZeroMQ endpoints.
              * @param threads_count, 0 for 1-thread variant, else will run threads_count threads for each endpoint.
              */
-            ZMQServer(std::vector<std::string> endpoints, unsigned int threads_count=0);
+            ZMQServer(const std::vector<std::string>& endpoints, unsigned int threads_count=0);
+            /**
+             * @brief ZeroMQSocketServer, constructor for the included ZeroMQSocketServer
+             * @param endpoints, a vector of ZMQServerCurve containing the ZeroMQ endpoints and .
+             * @param threads_count, 0 for 1-thread variant, else will run threads_count threads for each endpoint.
+             */
+            ZMQServer(ZMQEndpointOption::Vector endpoints, unsigned int threads_count=0);
 
             virtual ~ZMQServer();
 
@@ -69,7 +76,7 @@ namespace jsonrpc
 
 
         protected:
-            std::vector<std::string> endpoints;
+            ZMQEndpointOption::Vector endpoints;
             std::unique_ptr<ZMQListener> listener;
             unsigned int threads_count;
 

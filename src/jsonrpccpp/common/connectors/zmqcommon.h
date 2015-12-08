@@ -10,6 +10,12 @@
 
 #define JSONRPC_CPP_ZMQ_H_
 
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <zmq.hpp>
+
 namespace jsonrpc {
     
     /**
@@ -28,10 +34,15 @@ namespace jsonrpc {
             ZMQCurveKey(const std::string& stringkey);
             /**
              * @brief ZMQCurveKey, constructor for the included ZMQCurveKey.
+             * @param stringkey, 40-char C string, containing ZMQ_CURVE key in string form.
+             */
+            ZMQCurveKey(const char *stringkey);
+            /**
+             * @brief ZMQCurveKey, constructor for the included ZMQCurveKey.
              * @param binarykey, vector of 32 bytes, containing ZMQ_CURVE key in binary form.
              */
-            ZMQCurveKey(const std::vector<unsigned char>& binarykey);
-            virtual void ~ZMQCurveKey();
+            explicit ZMQCurveKey(const std::vector<unsigned char>& binarykey);
+            virtual ~ZMQCurveKey();
 
             unsigned char *Key()
             {
@@ -43,7 +54,7 @@ namespace jsonrpc {
             }
         private:
             std::vector<unsigned char> key;
-    }
+    };
 
     /**
      * @brief base class which allows use zmq_setsockopt(3).
@@ -51,6 +62,9 @@ namespace jsonrpc {
 
     class ZMQEndpointOption {
         public:
+            typedef typename std::unique_ptr<ZMQEndpointOption> Ptr;
+            typedef typename std::vector<Ptr> Vector;
+
             ZMQEndpointOption(const std::string& ep)
                 : endpoint(ep)
             {}
@@ -67,7 +81,25 @@ namespace jsonrpc {
         private:
             const std::string endpoint;
     };
-    
+    template <typename EP, typename... Args>
+        static inline ZMQEndpointOption::Ptr makeZMQEndpointOption(Args&&... args)
+        {
+            return ZMQEndpointOption::Ptr(new EP(args...));
+        }
+
+    template <typename EP>
+    struct ZMQEndpointOptionFabric {
+        template <typename...  Args>
+        static inline ZMQEndpointOption::Ptr make(Args&&... args)
+        {
+            return makeZMQEndpointOption<EP>(args...);
+        }
+    };
+    //ZMQEndpointOption::Vector operator ZMQEndpointOption::Vector
+
+
+
+
 }; /* namespace jsonrpc */
 
 

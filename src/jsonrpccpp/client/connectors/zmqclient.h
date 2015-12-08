@@ -22,7 +22,7 @@ namespace jsonrpc {
     /**
      * @brief ZMQClientCurve, class for client CURVE encryption support.
      */
-    class ZMQClientCurve : public ZMQEndpointOption {
+    class ZMQClientCurve : public ZMQEndpointOption, public ZMQEndpointOptionFabric<ZMQClientCurve> {
         public:
             /**
              * @brief ZMQClientCurve, constructor for the included ZMQClientCurve.
@@ -36,9 +36,9 @@ namespace jsonrpc {
                     const ZMQCurveKey& serverkey,
                     const ZMQCurveKey& publickey,
                     const ZMQCurveKey& secretkey);
-            virtual ~ZMQClientCurve;
+            virtual ~ZMQClientCurve() {};
 
-            virtual void SocketOptions(zmq::socket_t& s);
+            virtual void SocketOptions(zmq::socket_t& s) override;
         private:
             ZMQCurveKey serverkey;
             ZMQCurveKey publickey;
@@ -56,7 +56,7 @@ namespace jsonrpc {
              * @brief ZMQClient, constructor for the included ZMQClient.
              * @param endpoint, ZMQEndpointOption containing zeromq endpoint and zmq_socket options.
              */
-            ZMQClient(const ZMQEndpointOption& endpoint);
+            ZMQClient(ZMQEndpointOption::Ptr endpoint);
             virtual ~ZMQClient();
             virtual void SendRPCMessage(const std::string& message, std::string& result) throw (JsonRpcException);
 

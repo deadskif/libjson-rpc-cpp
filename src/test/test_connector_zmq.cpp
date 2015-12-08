@@ -55,6 +55,37 @@ namespace testzmqserver
         virtual ~FTH() {};
     };
 
+#define ZMQCURVE_CLIENT_PUBLIC_KEY "Yne@$w-vo<fVvi]a<NY6T1ed:M$fCG*[IaLV{hID"
+#define ZMQCURVE_CLIENT_SECRET_KEY "D:)Q[IlAW!ahhC2ac:9*A}h:p?([4%wOTJ%JR%cs"
+#define ZMQCURVE_SERVER_PUBLIC_KEY "rq:rM>}U?@Lns47E1%kR.o@n%FcmmsL/@{H8]yf7"
+#define ZMQCURVE_SERVER_SECRET_KEY "JTKVSB%%)wK0E.X)V>+}o?pNmC{O&4W4b!Ni{Lh6"
+    struct CF {
+        ZMQServer server;
+        ZMQClient ipc_client;
+        ZMQClient tcp_client;
+        MockClientConnectionHandler handler;
+        CF(unsigned int th=0)
+            : server(std::move([] {
+                        ZMQEndpointOption::Vector v;
+                        v.push_back(ZMQServerCurve::make(IPC_ENDPOINT, ZMQCURVE_SERVER_SECRET_KEY));
+                        v.push_back(ZMQServerCurve::make(TCP_ENDPOINT, ZMQCURVE_SERVER_SECRET_KEY));
+                        return std::move(v);
+                    }()
+                ), th),
+            ipc_client(ZMQClientCurve::make(IPC_ENDPOINT, ZMQCURVE_SERVER_PUBLIC_KEY, ZMQCURVE_CLIENT_PUBLIC_KEY, ZMQCURVE_CLIENT_SECRET_KEY)),
+            tcp_client(ZMQClientCurve::make(TCP_ENDPOINT, ZMQCURVE_SERVER_PUBLIC_KEY, ZMQCURVE_CLIENT_PUBLIC_KEY, ZMQCURVE_CLIENT_SECRET_KEY))
+        {
+            server.SetHandler(&handler);
+            REQUIRE(server.StartListening());
+        }
+        virtual ~CF()
+        {
+            server.StopListening();
+            unlink(IPC_SOCKET_PATH);
+        }
+    };
+
+
 
     bool check_exception1(JsonRpcException const&ex)
     {
@@ -107,6 +138,25 @@ TEST_CASE_METHOD(FTH, "test_zmq_threaded_tcp_success", TEST_MODULE)
 
     CHECK(handler.request == "examplerequest_tcp_th");
     CHECK(result == "exampleresponse_tcp_th");
+}
+TEST_CASE_METHOD(CF, "test_zmq_curve_ipc_success", TEST_MODULE)
+{
+    handler.response = "exampleresponse_ipc_cu";
+    string result;
+    ipc_client.SendRPCMessage("examplerequest_ipc_cu", result);
+
+    CHECK(handler.request == "examplerequest_ipc_cu");
+    CHECK(result == "exampleresponse_ipc_cu");
+}
+
+TEST_CASE_METHOD(CF, "test_zmq_curve_tcp_success", TEST_MODULE)
+{
+    handler.response = "exampleresponse_tcp_cu";
+    string result;
+    tcp_client.SendRPCMessage("examplerequest_tcp_cu", result);
+
+    CHECK(handler.request == "examplerequest_tcp_cu");
+    CHECK(result == "exampleresponse_tcp_cu");
 }
 
 TEST_CASE("test_zmq_client_invalid", TEST_MODULE)

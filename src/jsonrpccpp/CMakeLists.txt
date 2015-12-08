@@ -31,6 +31,8 @@ set(client_connector_libs   "")
 set(server_connector_source "")
 set(server_connector_header "")
 set(server_connector_libs   "")
+set(common_connector_header "")
+set(common_connector_libs   "")
 
 # setup sources for http connectors
 if (HTTP_CLIENT)
@@ -83,6 +85,12 @@ if (ZMQ_CLIENT)
         list(APPEND client_connector_libs ${ZMQ_LIBRARIES})
 endif()
 
+if (ZMQ_CLIENT OR ZMQ_SERVER)
+        list(APPEND common_connector_header "common/connectors/zmqcommon.h")
+        list(APPEND common_connector_source "common/connectors/zmqcommon.cpp")
+        list(APPEND common_connector_libs ${ZMQ_LIBRARIES})
+endif()
+
 # configure a header file to pass some of the CMake settings to the source code
 # TODO: move it to custom build step?
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/gen/jsonrpccpp/common")
@@ -99,14 +107,14 @@ include_directories(${MHD_INCLUDE_DIRS})
 
 # setup shared common library
 if (BUILD_SHARED_LIBS)
-	add_library(jsonrpccommon SHARED ${jsonrpc_source_common} ${jsonrpc_header} ${jsonrpc_helper_source_common})
+	add_library(jsonrpccommon SHARED ${jsonrpc_source_common} ${jsonrpc_header} ${jsonrpc_helper_source_common} ${common_connector_source})
 	target_link_libraries(jsonrpccommon ${JSONCPP_LIBRARIES})
 	set_target_properties(jsonrpccommon PROPERTIES OUTPUT_NAME jsonrpccpp-common)
 endif()
 
 # setup static common library
 if (BUILD_STATIC_LIBS OR MSVC)
-	add_library(jsonrpccommonStatic STATIC ${jsonrpc_source_common} ${jsonrpc_header} ${jsonrpc_helper_source_common})
+	add_library(jsonrpccommonStatic STATIC ${jsonrpc_source_common} ${jsonrpc_header} ${jsonrpc_helper_source_common} ${common_connector_source})
 	target_link_libraries(jsonrpccommonStatic ${JSONCPP_LIBRARIES})
 	set_target_properties(jsonrpccommonStatic PROPERTIES OUTPUT_NAME jsonrpccpp-common)
 
@@ -178,6 +186,7 @@ install(FILES ${jsonrpc_install_header_client}  DESTINATION include/jsonrpccpp/c
 install(FILES ${jsonrpc_install_header_server}  DESTINATION include/jsonrpccpp/server)
 install(FILES ${client_connector_header}        DESTINATION include/jsonrpccpp/client/connectors)
 install(FILES ${server_connector_header}        DESTINATION include/jsonrpccpp/server/connectors)
+install(FILES ${common_connector_header}        DESTINATION include/jsonrpccpp/common/connectors)
 
 if (WIN32)
 	file(GLOB win32_libs ${CMAKE_SOURCE_DIR}/win32-deps/lib/*.dll)

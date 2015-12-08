@@ -18,9 +18,21 @@ using namespace jsonrpc;
 using namespace std;
 using namespace zmq;
 
+ZMQServerCurve::ZMQServerCurve(const std::string& ep,
+                    const ZMQCurveKey& seckey)
+    : ZMQEndpointOption(ep),
+    secretkey(seckey)
+{
+}
+void ZMQServerCurve::SocketOptions(zmq::socket_t& s)
+{
+
+    s.setsockopt(ZMQ_CURVE_SECRETKEY, secretkey.Key(), secretkey.Size());
+
+}
 class jsonrpc::ZMQListener {
     public:
-        typedef std::vector<string> EndPoints;
+        typedef ZMQEndpointOption::Vector EndPoints;
         ZMQListener(AbstractServerConnector *s, const EndPoints& eps)
             : server(s), ctx(), endpoints(eps), stop(false)
         {}
@@ -71,8 +83,18 @@ ZMQServer::ZMQServer(const string& ep, unsigned int th_count)
                 : ep), th_count)
 {
 }
-ZMQServer::ZMQServer(vector<string> eps, unsigned int th_count) 
-    : endpoints(eps), listener(nullptr), threads_count(th_count)
+ZMQServer::ZMQServer(const vector<string>& eps, unsigned int th_count) 
+    : ZMQServer([&eps] {
+            ZMQEndpointOption::Vector e;
+            for(const auto& s : eps) {
+                e.emplace_back(new ZMQEndpointOption(s)); /* What am I doing wrong, C++? */
+            }
+            return std::move(e);
+    }(), th_count)
+{
+}
+ZMQServer::ZMQServer(ZMQEndpointOption::Vector eps, unsigned int th_count)
+    : endpoints(std::move(eps)), listener(nullptr), threads_count(th_count)
 {
 }
 
@@ -129,7 +151,7 @@ MultiThreadListener::MultiThreadListener(AbstractServerConnector *s, const EndPo
     : ZMQListener(s, eps)
 {
     /* Starting FRONTEND(ROUTER) <-> BACKEND(DEALER) proxies */
-    for (size_t i = 0; i < eps.size(); i++) {
+    for (size_t i = 0; i < endpoints.size(); i++) {
         ostringstream bes;
         bes << "inproc://jsonrpc_worker" << i;
         string be = bes.str();
@@ -137,7 +159,9 @@ MultiThreadListener::MultiThreadListener(AbstractServerConnector *s, const EndPo
         unique_ptr<socket_t> frontend(new socket_t(ctx, ZMQ_ROUTER));
         unique_ptr<socket_t> backend(new socket_t(ctx, ZMQ_DEALER));
 
-        frontend->bind(eps[i].c_str());
+        endpoints[i]->SocketOptions(*frontend);
+        frontend->bind(endpoints[i]->Endpoint());
+
         backend->bind(be.c_str());
 
         proxy_threads.emplace_back( [=, &frontend, &backend] {
@@ -207,7 +231,9 @@ OneThreadListener::OneThreadListener(AbstractServerConnector *s, const EndPoints
         const int linger = 0;
         socks->emplace_back(ctx, ZMQ_REP);
         socks->at(i).setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-        socks->at(i).bind(endpoints[i].c_str());
+
+        endpoints[i]->SocketOptions(socks->at(i));
+        socks->at(i).bind(endpoints[i]->Endpoint());
     }
     listening_thread = thread(&OneThreadListener::WorkerThread,
             this, move(socks));
