@@ -27,8 +27,9 @@ ZMQServerCurve::ZMQServerCurve(const std::string& ep,
 void ZMQServerCurve::SocketOptions(zmq::socket_t& s)
 {
 
+    int v = 1;
     s.setsockopt(ZMQ_CURVE_SECRETKEY, secretkey.Key(), secretkey.Size());
-
+    s.setsockopt(ZMQ_CURVE_SERVER, &v, sizeof(v));
 }
 class jsonrpc::ZMQListener {
     public:
@@ -159,6 +160,8 @@ MultiThreadListener::MultiThreadListener(AbstractServerConnector *s, const EndPo
         unique_ptr<socket_t> frontend(new socket_t(ctx, ZMQ_ROUTER));
         unique_ptr<socket_t> backend(new socket_t(ctx, ZMQ_DEALER));
 
+        int linger = 0;
+        frontend->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
         endpoints[i]->SocketOptions(*frontend);
         frontend->bind(endpoints[i]->Endpoint());
 
